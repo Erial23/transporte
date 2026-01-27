@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+
+<style>
+    /* Fondo animado fijo */
+    #vanta-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+
+    /* Panel estilo Glassmorphism */
+    .glass-panel {
+        background: rgba(10, 20, 40, 0.75);
+        backdrop-filter: blur(15px);
+        border-radius: 25px;
+        border: 1px solid rgba(0, 198, 255, 0.3);
+        color: white;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Inputs personalizados para el tema oscuro */
+    .form-control-cyber {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(0, 198, 255, 0.2) !important;
+        color: white !important;
+        border-radius: 12px;
+        transition: all 0.3s;
+    }
+
+    .form-control-cyber:focus {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-color: #00c6ff !important;
+        box-shadow: 0 0 15px rgba(0, 198, 255, 0.4);
+    }
+
+    /* Mapa con bordes de neón */
+    #map-rutas-container {
+        height: 650px;
+        border-radius: 25px;
+        border: 2px solid rgba(0, 198, 255, 0.3);
+        overflow: hidden;
+        box-shadow: 0 0 25px rgba(0, 198, 255, 0.2);
+    }
+
+    .btn-cyber {
+        border-radius: 15px;
+        padding: 15px;
+        font-weight: 700;
+        letter-spacing: 1px;
+        transition: 0.3s;
+    }
+
+    .text-info-cyber {
+        color: #00c6ff;
+        text-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
+    }
+</style>
+
+<div id="vanta-canvas"></div>
+
+<div class="row g-4 position-relative">
+    <div class="col-md-4">
+        <div class="card glass-panel p-4 border-0">
+            <h4 class="fw-bold text-info-cyber mb-3">🛣️ Conectar Red</h4>
+            <p class="small text-white-50 mb-4">
+                Haz clic en la <b>Parada de Origen</b> y luego en la <b>Parada de Destino</b> sobre el mapa.
+            </p>
+            
+            <form method="POST" id="form-ruta">
+                <div class="mb-3 text-start">
+                    <label class="small fw-bold text-info-cyber mb-2">PUNTO A (ORIGEN)</label>
+                    <input type="text" id="nombre_a" class="form-control form-control-cyber p-3" placeholder="Selecciona en el mapa" readonly>
+                    <input type="hidden" name="origen_id" id="id_a">
+                </div>
+                
+                <div class="mb-4 text-start">
+                    <label class="small fw-bold text-info-cyber mb-2">PUNTO B (DESTINO)</label>
+                    <input type="text" id="nombre_b" class="form-control form-control-cyber p-3" placeholder="Selecciona en el mapa" readonly>
+                    <input type="hidden" name="destino_id" id="id_b">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-cyber w-100 shadow-lg" id="btn-guardar" disabled>
+                    GUARDAR CONEXIÓN VIAL
+                </button>
+                
+                <button type="button" class="btn btn-link text-white-50 w-100 mt-2 btn-sm text-decoration-none" onclick="reiniciarSeleccion()">
+                    <i class="fas fa-undo me-1"></i> Limpiar selección
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div id="map-rutas-container">
+            <div id="map-rutas" style="height: 100%;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar efecto de red 3D
+    VANTA.NET({
+      el: "#vanta-canvas",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00c6ff,
+      backgroundColor: 0x050a18,
+      points: 15.00,
+      maxDistance: 20.00,
+      spacing: 15.00
+    });
+
+    // Inicializar mapa
+    var map = L.map('map-rutas').setView([-1.249, -78.627], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    var seleccion = []; 
+
+    // Marcadores dinámicos
+    {% for p in paradas %}
+        var marker = L.marker([{{ p.latitud }}, {{ p.longitud }}]).addTo(map);
+        marker.bindTooltip("<b class='text-primary'>{{ p.nombre }}</b>", {direction: 'top'});
+        
+        marker.on('click', function(e) {
+            gestionarSeleccion("{{ p.id }}", "{{ p.nombre }}");
+        });
+    {% endfor %}
+
+    // Tu lógica original sin cambios
+    function gestionarSeleccion(id, nombre) {
+        if (seleccion.length < 2) {
+            if (seleccion.length === 1 && seleccion[0].id === id) {
+                alert("El destino debe ser diferente al origen.");
+                return;
+            }
+            seleccion.push({id: id, nombre: nombre});
+            actualizarInterfaz();
+        }
+    }
+
+    function actualizarInterfaz() {
+        if (seleccion[0]) {
+            document.getElementById('nombre_a').value = seleccion[0].nombre;
+            document.getElementById('id_a').value = seleccion[0].id;
+        }
+        if (seleccion[1]) {
+            document.getElementById('nombre_b').value = seleccion[1].nombre;
+            document.getElementById('id_b').value = seleccion[1].id;
+            document.getElementById('btn-guardar').disabled = false;
+            // Estilo dinámico para el botón
+            document.getElementById('btn-guardar').style.background = "linear-gradient(45deg, #198754, #20c997)";
+            document.getElementById('btn-guardar').style.border = "none";
+        }
+    }
+
+    function reiniciarSeleccion() {
+        seleccion = [];
+        document.getElementById('nombre_a').value = "";
+        document.getElementById('id_a').value = "";
+        document.getElementById('nombre_b').value = "";
+        document.getElementById('id_b').value = "";
+        document.getElementById('btn-guardar').disabled = true;
+        document.getElementById('btn-guardar').style.background = ""; // Reset al estilo original
+    }
+</script>
+{% endblock %}

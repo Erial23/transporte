@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>Registro - RUTAS LIVE</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        #vanta-bg {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+        .register-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Tarjeta Glassmorphism Sci-Fi */
+        .glass-card {
+            background: rgba(10, 20, 40, 0.75);
+            backdrop-filter: blur(20px);
+            border-radius: 25px;
+            border: 2px solid rgba(0, 198, 255, 0.3);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 198, 255, 0.1);
+            width: 100%;
+            max-width: 450px;
+            padding: 35px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Línea de neón animada */
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00c6ff, #0d6efd, transparent);
+            animation: flow 3s linear infinite;
+        }
+
+        @keyframes flow {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .brand-title {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #ffffff, #00c6ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        /* Estilo de los inputs */
+        .input-group-text {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            color: #00c6ff;
+            border-radius: 12px 0 0 12px;
+        }
+
+        .form-control {
+            border-radius: 0 12px 12px 0;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 198, 255, 0.2);
+            color: white !important;
+            transition: all 0.4s ease;
+        }
+
+        .form-control::placeholder { color: rgba(255,255,255,0.4); }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00c6ff;
+            box-shadow: 0 0 20px rgba(0, 198, 255, 0.4);
+        }
+
+        /* Botón de Registro */
+        .btn-cyber {
+            background: linear-gradient(45deg, #0d6efd, #00c6ff);
+            border: none;
+            border-radius: 12px;
+            padding: 14px;
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(13, 110, 253, 0.4);
+        }
+
+        .btn-cyber:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 30px rgba(0, 198, 255, 0.6);
+        }
+
+        .link-footer {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+        }
+
+        .link-footer a {
+            color: #00c6ff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-footer a:hover { text-shadow: 0 0 10px #00c6ff; }
+    </style>
+</head>
+<body>
+
+<div id="vanta-bg"></div>
+
+<div class="register-container">
+    <div class="glass-card">
+        <div class="text-center mb-4">
+            <h2 class="brand-title mb-1">NUEVO USUARIO</h2>
+            <p class="text-white opacity-50 small">Únete a la red de RUTAS LIVE</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-info bg-transparent border-info text-info small py-2 mb-3">
+                <i class="fas fa-info-circle me-2"></i>{{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST">
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fas fa-user-plus"></i></span>
+                <input name="username" class="form-control" placeholder="Nombre de usuario" required>
+            </div>
+
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fas fa-key"></i></span>
+                <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
+            </div>
+
+            <div class="input-group mb-4">
+                <span class="input-group-text"><i class="fas fa-check-double"></i></span>
+                <input type="password" name="confirm_password" class="form-control" placeholder="Repetir contraseña" required>
+            </div>
+
+            <button type="submit" class="btn btn-cyber w-100 mb-3">
+                CREAR CUENTA <i class="fas fa-rocket ms-2"></i>
+            </button>
+            
+            <div class="text-center link-footer">
+                <span>¿Ya tienes una cuenta?</span><br>
+                <a href="{{ url_for('auth.login') }}">Inicia sesión aquí</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Efecto de red idéntico al del Login para coherencia total
+    VANTA.NET({
+      el: "#vanta-bg",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00c6ff,
+      backgroundColor: 0x050a18,
+      points: 15.00,
+      maxDistance: 20.00,
+      spacing: 15.00
+    })
+</script>
+
+</body>
+</html>

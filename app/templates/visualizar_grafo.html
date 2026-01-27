@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.dots.min.js"></script>
+
+<style>
+    #vanta-canvas {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        z-index: -1;
+    }
+
+    .glass-graph-card {
+        background: rgba(10, 20, 40, 0.8);
+        backdrop-filter: blur(20px);
+        border-radius: 30px;
+        border: 2px solid rgba(0, 198, 255, 0.3);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+    }
+
+    #cy {
+        height: 700px;
+        background: transparent !important;
+    }
+
+    .graph-title {
+        font-family: 'Orbitron', sans-serif;
+        color: #00c6ff;
+        text-shadow: 0 0 10px rgba(0, 198, 255, 0.5);
+    }
+</style>
+
+<div id="vanta-canvas"></div>
+
+<div class="container py-4 position-relative">
+    <div class="card glass-graph-card border-0">
+        <div class="card-header bg-transparent border-bottom border-info border-opacity-25 p-4">
+            <h5 class="mb-0 fw-bold graph-title">
+                <i class="fas fa-project-diagram me-3"></i>RED TÁCTICA INTERACTIVA
+            </h5>
+        </div>
+        <div id="cy"></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+<script>
+    VANTA.DOTS({
+        el: "#vanta-canvas",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        backgroundColor: 0x050a18,
+        color: 0x00c6ff,
+        color2: 0x0d6efd,
+        showLines: true
+    });
+
+    var cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: {{ datos|tojson }},
+        style: [
+            { 
+                selector: 'node', 
+                style: { 
+                    'background-color': '#0a1428', // Fondo oscuro para el nodo
+                    'border-width': 2,
+                    'border-color': '#00c6ff',
+                    'border-opacity': 0.5,
+                    'label': 'data(label)', 
+                    'color': '#fff', 
+                    'font-size': '10px',
+                    'text-outline-width': 2,
+                    'text-outline-color': '#050a18',
+                    /* Transición suave para el brillo del borde */
+                    'transition-property': 'border-width, border-color, shadow-blur',
+                    'transition-duration': '0.2s'
+                } 
+            },
+            { 
+                selector: 'node[tipo = "guardada"]', 
+                style: { 
+                    'shape': 'hexagon',
+                    'background-color': '#0a1428',
+                    'border-color': 'data(color_nodo)',
+                    'width': 25, 'height': 25
+                } 
+            },
+            { 
+                selector: 'edge', 
+                style: { 
+                    'width': 2, 
+                    'line-color': 'rgba(255,255,255,0.1)', 
+                    'curve-style': 'bezier', 
+                    'target-arrow-shape': 'triangle',
+                    'target-arrow-color': 'rgba(255,255,255,0.1)',
+                    'opacity': 0.3
+                } 
+            },
+            { 
+                selector: 'edge[label = "trayecto"]', 
+                style: { 
+                    'line-color': 'data(color_linea)', 
+                    'width': 3,
+                    'line-style': 'dashed',
+                    'opacity': 0.6
+                } 
+            },
+            
+            /* --- ESTILO DE BRILLO SOLO PARA EL BORDE AL PASAR EL MOUSE --- */
+            { 
+                selector: 'node.hover-effect', 
+                style: { 
+                    'border-width': 4,
+                    'border-color': '#fff',
+                    'border-opacity': 1,
+                    /* Brillo de neón exterior centrado en el borde */
+                    'shadow-blur': 15,
+                    'shadow-color': '#00c6ff',
+                    'shadow-opacity': 1,
+                    'shadow-offset-x': 0,
+                    'shadow-offset-y': 0
+                } 
+            },
+            /* Efecto para nodos de rutas guardadas al pasar el mouse */
+            {
+                selector: 'node[tipo = "guardada"].hover-effect',
+                style: {
+                    'shadow-color': 'data(color_nodo)',
+                    'border-color': 'data(color_nodo)'
+                }
+            }
+        ],
+        layout: { name: 'cose', padding: 50 }
+    });
+
+    /* --- EVENTOS DE MOUSE (HOVER) --- */
+    
+    // Al entrar al nodo con el puntero
+    cy.on('mouseover', 'node', function(e){
+        e.target.addClass('hover-effect');
+        // Cambiar cursor a mano
+        document.getElementById('cy').style.cursor = 'pointer';
+    });
+
+    // Al salir del nodo con el puntero
+    cy.on('mouseout', 'node', function(e){
+        e.target.removeClass('hover-effect');
+        // Regresar cursor a normal
+        document.getElementById('cy').style.cursor = 'default';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+
+<style>
+    /* Contenedor del fondo animado */
+    #vanta-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+
+    /* Panel de control estilo Glassmorphism */
+    .glass-panel {
+        background: rgba(10, 20, 40, 0.7);
+        backdrop-filter: blur(15px);
+        border-radius: 25px;
+        border: 1px solid rgba(0, 198, 255, 0.3);
+        color: white;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    .form-control-cyber {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border: 1px solid rgba(0, 198, 255, 0.4) !important;
+        color: white !important;
+        border-radius: 12px;
+    }
+
+    /* Mapa con bordes de neón */
+    #map-m {
+        height: 600px;
+        border-radius: 25px;
+        border: 2px solid rgba(0, 198, 255, 0.3);
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .btn-cyber-success {
+        background: linear-gradient(45deg, #198754, #20c997);
+        border: none;
+        font-weight: 700;
+        border-radius: 12px;
+    }
+
+    .list-group-item-cyber {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(0, 198, 255, 0.1);
+        color: white;
+        margin-bottom: 5px;
+        border-radius: 10px !important;
+    }
+</style>
+
+<div id="vanta-canvas"></div>
+
+<div class="row g-4 position-relative">
+    <div class="col-md-4">
+        <div class="card glass-panel p-4 shadow-lg border-0">
+            <h4 class="fw-bold mb-4 text-info" style="text-shadow: 0 0 10px rgba(0,198,255,0.3);">
+                {% if puntos_edit %}✏️ EDITAR RUTA{% else %}📍 RUTA PERSONALIZADA{% endif %}
+            </h4>
+            
+            <div id="paso-1" {% if puntos_edit %}style="display:none;"{% endif %}>
+                <label class="small fw-bold mb-2 opacity-75 text-white">PUNTOS A MARCAR (1-10)</label>
+                <input type="number" id="cant" class="form-control form-control-cyber mb-3 p-3" 
+                       min="1" max="10" value="5" oninput="validarRango(this)">
+                
+                <div id="msg-error" class="text-warning small mb-3" style="display: none;">
+                    <i class="fas fa-exclamation-triangle me-1"></i> El rango permitido es de 1 a 10.
+                </div>
+                
+                <button onclick="iniciar()" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" style="border-radius: 12px;">
+                    COMENZAR SELECCIÓN
+                </button>
+            </div>
+
+            <div id="paso-2" {% if puntos_edit %}style="display:block;"{% else %}style="display:none;"{% endif %}>
+                <p class="small fw-bold text-info mb-3"><i class="fas fa-mouse-pointer me-2"></i>Marca puntos en el mapa:</p>
+                
+                <ul id="lista" class="list-group list-group-flush mb-4 small" style="max-height: 250px; overflow-y: auto;">
+                </ul>
+                
+                <form id="form-guardar" method="POST" action="{{ url_for('grafo.guardar_ruta_personalizada') }}">
+                    <input type="text" name="nombre_ruta" class="form-control form-control-cyber mb-2" 
+                           placeholder="Nombre de la ruta..." value="{{ nombre_edit if nombre_edit else '' }}">
+                    <input type="hidden" name="puntos_data" id="puntos_data_save">
+                    <input type="hidden" name="ruta_id" id="ruta_id_field" value="{{ ruta_id_edit if ruta_id_edit else '' }}">
+                    <button type="submit" id="btn-guardar" class="btn btn-outline-info w-100 py-2 fw-bold" style="border-radius: 12px;" disabled>
+                        💾 {% if puntos_edit %}ACTUALIZAR{% else %}GUARDAR RUTA{% endif %}
+                    </button>
+                </form>
+                
+                <a href="{{ url_for('grafo.ruta_multiple') }}" class="btn btn-link btn-sm w-100 mt-3 text-info text-decoration-none opacity-75">
+                    Cancelar y Reiniciar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div id="map-m"></div>
+    </div>
+</div>
+
+<script>
+    // Fondo 3D
+    VANTA.NET({
+      el: "#vanta-canvas",
+      mouseControls: true,
+      touchControls: true,
+      gyroControls: false,
+      minHeight: 200.00,
+      minWidth: 200.00,
+      scale: 1.00,
+      scaleMobile: 1.00,
+      color: 0x00c6ff,
+      backgroundColor: 0x050a18,
+      points: 15.00,
+      maxDistance: 20.00,
+      spacing: 15.00
+    });
+
+    let map = L.map('map-m').setView([-1.249, -78.627], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    
+    let pts = []; 
+    let markers_map = []; 
+    let lim = 0;
+
+    {% if puntos_edit %}
+        pts = {{ puntos_edit|tojson|safe }};
+        lim = 10;
+        pts.forEach((p) => {
+            let m = L.marker([p.lat, p.lng]).addTo(map).bindPopup(p.nombre);
+            markers_map.push(m);
+        });
+        renderizarLista();
+        actualizarInputs();
+    {% endif %}
+
+    function mostrarCargando() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) { overlay.style.display = 'flex'; }
+    }
+
+    function validarRango(input) {
+        const msg = document.getElementById('msg-error');
+        if (input.value > 10 || (input.value < 1 && input.value !== "")) {
+            msg.style.display = 'block';
+            input.classList.add('border-warning');
+        } else {
+            msg.style.display = 'none';
+            input.classList.remove('border-warning');
+        }
+    }
+
+    function iniciar() {
+        const inputCant = document.getElementById('cant');
+        let valor = parseInt(inputCant.value);
+        if (isNaN(valor) || valor < 1 || valor > 10) {
+            alert("Selecciona entre 1 y 10 puntos.");
+            return;
+        }
+        lim = valor;
+        document.getElementById('paso-1').style.display='none';
+        document.getElementById('paso-2').style.display='block';
+        activarClickMapa();
+    }
+
+    function activarClickMapa() {
+        map.off('click'); 
+        map.on('click', async (e) => {
+            if(pts.length < lim) {
+                const nombre = await obtenerNombre(e.latlng.lat, e.latlng.lng);
+                pts.push({nombre: nombre, lat: e.latlng.lat, lng: e.latlng.lng});
+                let m = L.marker(e.latlng).addTo(map).bindPopup(nombre).openPopup();
+                markers_map.push(m);
+                renderizarLista();
+                actualizarInputs();
+            }
+        });
+    }
+
+    function eliminarPunto(index) {
+        if (markers_map[index]) map.removeLayer(markers_map[index]); 
+        pts.splice(index, 1);        
+        markers_map.splice(index, 1); 
+        renderizarLista();
+        actualizarInputs();
+    }
+
+    function renderizarLista() {
+        const contenedor = document.getElementById('lista');
+        contenedor.innerHTML = ""; 
+        pts.forEach((p, i) => {
+            const li = document.createElement('li');
+            li.className = "list-group-item list-group-item-cyber d-flex justify-content-between align-items-center";
+            li.innerHTML = `
+                <span><i class="fas fa-check-circle text-info me-2"></i>${p.nombre}</span>
+                <button type="button" class="btn btn-sm btn-danger rounded-circle" onclick="eliminarPunto(${i})" style="width:24px; height:24px; padding:0;">×</button>
+            `;
+            contenedor.appendChild(li);
+        });
+    }
+
+    function actualizarInputs() {
+        const data = JSON.stringify(pts);
+        // Actualizamos solo el input del formulario de guardado
+        const saveInput = document.getElementById('puntos_data_save');
+        if (saveInput) saveInput.value = data;
+        
+        const ok = pts.length > 0;
+        const btnGuardar = document.getElementById('btn-guardar');
+        if (btnGuardar) btnGuardar.disabled = !ok;
+    }
+
+    async function obtenerNombre(lat, lng) {
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            return data.display_name.split(',')[0];
+        } catch { return `Punto ${pts.length + 1}`; }
+    }
+
+    {% if puntos_edit %} activarClickMapa(); {% endif %}
+</script>
+{% endblock %}

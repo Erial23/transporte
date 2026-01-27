@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card p-4 shadow-sm border-0 mb-3">
+            <h4 class="fw-bold text-primary mb-3">📍 Agregar Parada</h4>
+            <form method="POST" action="{{ url_for('paradas.crear') }}">
+                <input name="nombre" class="form-control mb-3 p-3 border-0 bg-light" placeholder="Nombre de la parada" required>
+                <input name="latitud" id="lat" class="form-control mb-3 bg-light border-0" placeholder="Latitud" readonly required>
+                <input name="longitud" id="lng" class="form-control mb-4 bg-light border-0" placeholder="Longitud" readonly required>
+                <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow">GUARDAR PARADA</button>
+            </form>
+            
+            <hr class="my-4">
+            <a href="{{ url_for('rutas.limpiar_todo') }}" 
+               onclick="return confirm('¿Estás seguro? Se borrarán TODAS las paradas y rutas para siempre.')" 
+               class="btn btn-danger btn-sm w-100 opacity-75">
+               🗑️ REINICIAR TODO EL SISTEMA
+            </a>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 overflow-hidden" style="height: 600px;">
+            <div id="map-select" style="height: 100%;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var map = L.map('map-select').setView([-1.249, -78.627], 14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    var marker;
+    map.on('click', function(e) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker(e.latlng).addTo(map);
+        document.getElementById('lat').value = e.latlng.lat.toFixed(6);
+        document.getElementById('lng').value = e.latlng.lng.toFixed(6);
+    });
+</script>
+{% endblock %}

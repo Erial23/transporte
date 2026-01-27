@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block content %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+
+<style>
+    /* Fondo animado fluido */
+    #vanta-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -1;
+    }
+
+    /* Panel de control estilo Glassmorphism Táctico */
+    .glass-nav-card {
+        background: rgba(10, 20, 40, 0.75);
+        backdrop-filter: blur(20px);
+        border-radius: 30px;
+        border: 1px solid rgba(0, 198, 255, 0.3);
+        color: white;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Lista de rutas estilizada */
+    .list-cyber-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        transition: 0.3s;
+        border-radius: 15px !important;
+    }
+
+    .list-cyber-item:hover {
+        background: rgba(0, 198, 255, 0.1);
+        border-color: #00c6ff;
+        color: #00c6ff;
+    }
+
+    .list-cyber-item.active {
+        background: linear-gradient(45deg, #198754, #20c997) !important;
+        border: none !important;
+        box-shadow: 0 0 15px rgba(25, 135, 84, 0.4);
+    }
+
+    /* Mapa con bordes de neón */
+    #map-navegacion-container {
+        height: 600px;
+        border-radius: 30px;
+        border: 2px solid rgba(0, 198, 255, 0.3);
+        box-shadow: 0 0 25px rgba(0, 198, 255, 0.2);
+        overflow: hidden;
+    }
+
+    .itinerary-box {
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 4px solid #198754;
+    }
+
+    /* Scroll personalizado para la estética Cyber */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #00c6ff; border-radius: 10px; }
+</style>
+
+<div id="vanta-canvas"></div>
+
+<div class="container mt-4 position-relative">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card glass-nav-card p-4 border-0">
+                <h4 class="fw-bold text-success mb-3" style="text-shadow: 0 0 10px rgba(25, 135, 84, 0.3);">
+                    🚀 Navegación Real
+                </h4>
+                <p class="small text-white-50 mb-4">El recorrido sigue el trazado de las calles automáticamente.</p>
+                
+                <div class="list-group mb-4" style="max-height: 300px; overflow-y: auto;">
+                    {% for r in rutas %}
+                    <a href="{{ url_for('grafo.empezar_ruta', ruta_id=r.id) }}" 
+                       class="list-group-item list-cyber-item border-0 mb-2 p-3 {% if ruta_seleccionada and ruta_seleccionada.id == r.id %}active{% endif %}">
+                        <div class="fw-bold">{{ r.nombre_ruta }}</div>
+                        <small class="opacity-75">{% if ruta_seleccionada and ruta_seleccionada.id == r.id %}📍 Ruta en Pantalla{% else %}Ver trayecto{% endif %}</small>
+                    </a>
+                    {% else %}
+                    <p class="text-center small py-3 text-white-50">No hay rutas guardadas.</p>
+                    {% endfor %}
+                </div>
+
+                {% if ruta_seleccionada %}
+                <div class="itinerary-box p-3 rounded shadow-sm mt-2">
+                    <h6 class="fw-bold text-info"><i class="fas fa-list-ul me-2"></i>Itinerario:</h6>
+                    <div id="lista-paradas" class="small mt-2 text-white-50" style="max-height: 200px; overflow-y: auto;">
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div id="map-navegacion-container">
+                <div id="map-navegacion" style="height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializar efecto de atmósfera fluida (FOG)
+    VANTA.FOG({
+        el: "#vanta-canvas",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.00,
+        minWidth: 200.00,
+        highlightColor: 0x00c6ff,
+        midtoneColor: 0x0d6efd,
+        lowlightColor: 0x050a18,
+        baseColor: 0x050a18,
+        speed: 1.50
+    });
+
+    var map = L.map('map-navegacion').setView([-1.249, -78.627], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    {% if puntos_json %}
+        var puntos = {{ puntos_json|safe }};
+        var listaHTML = "";
+        
+        if (puntos.length >= 2) {
+            var waypoints = puntos.map(function(p) {
+                return L.latLng(p.lat, p.lng);
+            });
+
+            var routingControl = L.Routing.control({
+                waypoints: waypoints,
+                language: 'es',
+                lineOptions: {
+                    styles: [
+                        { color: '#050a18', opacity: 0.6, weight: 10 }, // Borde de profundidad
+                        { color: '#198754', opacity: 1, weight: 6 }     // Línea neón
+                    ]
+                },
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: true,
+                createMarker: function(i, wp, n) {
+                    var esInicio = (i === 0);
+                    var esFin = (i === n - 1);
+                    var texto = "<b>Punto " + (i + 1) + ":</b> " + puntos[i].nombre;
+                    
+                    if (esInicio) texto = "<b>🏁 INICIO:</b> " + puntos[i].nombre;
+                    if (esFin) texto = "<b>🏆 FIN:</b> " + puntos[i].nombre;
+
+                    var marker = L.marker(wp.latLng).bindPopup(texto);
+                    
+                    if (esInicio) setTimeout(() => { marker._icon.style.filter = "hue-rotate(140deg) saturate(3)"; }, 100);
+                    if (esFin) setTimeout(() => { marker._icon.style.filter = "hue-rotate(300deg) saturate(3)"; }, 100);
+                    
+                    return marker;
+                }
+            }).addTo(map);
+
+            puntos.forEach(function(p) {
+                listaHTML += "<div class='mb-2 border-bottom border-white border-opacity-10 pb-1'><i class='fas fa-map-pin me-2 text-success'></i>" + p.nombre + "</div>";
+            });
+            document.getElementById('lista-paradas').innerHTML = listaHTML;
+        }
+    {% endif %}
+
+    setTimeout(function(){ map.invalidateSize(); }, 500);
+</script>
+
+<style>
+    /* Estilización del panel de instrucciones nativo de Leaflet */
+    .leaflet-routing-container {
+        font-family: 'Poppins', sans-serif !important;
+        background: rgba(10, 20, 40, 0.9) !important;
+        color: white !important;
+        border: 1px solid rgba(0, 198, 255, 0.3) !important;
+        border-radius: 15px !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .leaflet-routing-alt { border-bottom: 1px solid rgba(255,255,255,0.1) !important; }
+    .leaflet-routing-alt:hover { background: rgba(0, 198, 255, 0.1) !important; }
+</style>
+{% endblock %}
